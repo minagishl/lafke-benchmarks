@@ -16,11 +16,13 @@ type loc struct {
 
 // finding is a lafke finding reduced to what the scorers use.
 type finding struct {
-	ID    string
-	CWEs  []int
-	File  string // slash-separated, relative to the repository root
-	Line  int
-	Trace []loc
+	ID      string
+	Detail  string
+	Subject string
+	CWEs    []int
+	File    string // slash-separated, relative to the repository root
+	Line    int
+	Trace   []loc
 }
 
 var cweRe = regexp.MustCompile(`CWE-(\d+)`)
@@ -33,6 +35,8 @@ func parseFindings(report []byte, prefix string) ([]finding, int, error) {
 		Findings []struct {
 			ID       string `json:"id"`
 			Title    string `json:"title"`
+			Detail   string `json:"detail"`
+			Subject  string `json:"subject"`
 			Location struct {
 				File string `json:"file"`
 				Line int    `json:"line"`
@@ -63,7 +67,7 @@ func parseFindings(report []byte, prefix string) ([]finding, int, error) {
 		case "sast:secrets-unchecked":
 			continue
 		}
-		fd := finding{ID: f.ID, File: norm(f.Location.File), Line: f.Location.Line}
+		fd := finding{ID: f.ID, Detail: f.Detail, Subject: f.Subject, File: norm(f.Location.File), Line: f.Location.Line}
 		for _, m := range cweRe.FindAllStringSubmatch(f.Title, -1) {
 			n, _ := strconv.Atoi(m[1])
 			fd.CWEs = append(fd.CWEs, n)

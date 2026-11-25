@@ -15,8 +15,8 @@ import (
 // reading of them, not a KICS scorer: KICS has thousands of queries and lafke has a few dozen
 // rules, so only the queries that corpora.json maps to lafke rules are scored.
 //
-// Each file is one case. A positive file is a hit when a mapped rule reports a finding in it, and
-// a negative file is a false positive when one does. The line is not compared.
+// Each file is one case. A finding has to match its rule ID and any query-specific filter.
+// The same criteria apply to positive and negative files.
 //
 // lafke finds a Dockerfile, a Compose file or a workflow by its name, so every case is copied to
 // a directory of its own under the cache, with the name lafke expects. The corpus itself is not
@@ -28,6 +28,7 @@ type kicsCase struct {
 	rules map[string]bool // the rules that count as a hit
 	real  bool
 	cat   string // the first mapped rule, without the sast: prefix
+	match kicsMatcher
 }
 
 type kicsMeta struct {
@@ -58,6 +59,10 @@ func (kicsSuite) prepare(e *env, c *corpus) ([]unit, error) {
 	}
 	if len(c.Queries) == 0 {
 		return nil, fmt.Errorf("queries are missing")
+	}
+	filters, err := compileKICSFilters(dest, c.Queries, c.QueryFilters)
+	if err != nil {
+		return nil, err
 	}
 	stage := filepath.Join(e.cache, c.Name+"-stage")
 	if err := os.RemoveAll(stage); err != nil {
@@ -119,7 +124,7 @@ func (kicsSuite) prepare(e *env, c *corpus) ([]unit, error) {
 			if err := copyFile(src, filepath.Join(stage, filepath.FromSlash(rel))); err != nil {
 				return nil, err
 			}
-			meta[top].cases = append(meta[top].cases, kicsCase{file: rel, rules: rules, real: files[name], cat: cat})
+			meta[top].cases = append(meta[top].cases, kicsCase{file: rel, rules: rules, real: files[name], cat: cat, match: filters[query]})
 		}
 	}
 	var units []unit
@@ -153,20 +158,14 @@ func (kicsSuite) score(e *env, c *corpus, units []unit, res map[string]*unitResu
 		r := res[u.Name]
 		t.acc.AnalysisIncomplete += r.incomplete
 		t.acc.Excluded += m.excluded
-		hits := map[string]map[string]bool{} // file -> rule
+		findings := map[string][]finding{}
 		for _, f := range r.findings {
-			if hits[f.File] == nil {
-				hits[f.File] = map[string]bool{}
-			}
-			hits[f.File][f.ID] = true
+			findings[f.File] = append(findings[f.File], f)
 		}
 		for _, cs := range m.cases {
-			hit := false
-			for rule := range cs.rules {
-				if hits[cs.file][rule] {
-					hit = true
-				}
-			}
+			hit := slices.ContainsFunc(findings[cs.file], func(f finding) bool {
+				return cs.rules[f.ID] && cs.match.matches(f)
+			})
 			t.add(cs.cat, cs.real, hit)
 		}
 	}

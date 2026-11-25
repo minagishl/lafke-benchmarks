@@ -23,7 +23,8 @@ type corpus struct {
 	SkipCategories []string `json:"skip_categories,omitempty"` // cwe-csv
 	// Queries maps a KICS query directory (relative to assets/queries) to the lafke rules that
 	// count as finding it. A query that is not listed is not scored.
-	Queries map[string][]string `json:"queries,omitempty"` // kics
+	Queries      map[string][]string   `json:"queries,omitempty"`       // kics
+	QueryFilters map[string]kicsFilter `json:"query_filters,omitempty"` // kics
 }
 
 type corporaFile struct {

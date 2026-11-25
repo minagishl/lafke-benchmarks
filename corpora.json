@@ -268,7 +268,8 @@
       "repo": "https://github.com/Checkmarx/kics.git",
       "rev": "a572efb2d9fe3799c5190376f6e1351ad577bb22",
       "sparse": [
-        "assets/queries"
+        "assets/queries",
+        "assets/libraries"
       ],
       "command": [
         "sast"
@@ -428,7 +429,8 @@
           "sast:secrets/aws-access-key"
         ],
         "terraform/aws/http_port_open": [
-          "sast:iac/open-ingress"
+          "sast:iac/open-ingress",
+          "sast:iac/public-http-ingress"
         ],
         "terraform/aws/iam_policies_with_full_privileges": [
           "sast:iac/iam-wildcard"
@@ -491,16 +493,19 @@
           "sast:iac/open-ingress"
         ],
         "terraform/aws/sensitive_port_is_exposed_to_entire_network": [
-          "sast:iac/open-ingress"
+          "sast:iac/open-ingress",
+          "sast:iac/public-http-ingress"
         ],
         "terraform/aws/sql_analysis_services_port_2383_is_publicly_accessible": [
           "sast:iac/open-ingress"
         ],
         "terraform/aws/unknown_port_exposed_to_internet": [
-          "sast:iac/open-ingress"
+          "sast:iac/open-ingress",
+          "sast:iac/public-http-ingress"
         ],
         "terraform/aws/unrestricted_security_group_ingress": [
-          "sast:iac/open-ingress"
+          "sast:iac/open-ingress",
+          "sast:iac/public-http-ingress"
         ],
         "terraform/azure/rdp_is_exposed_to_the_internet": [
           "sast:iac/open-ingress"
@@ -523,6 +528,100 @@
         "terraform/gcp/ssh_access_is_not_restricted": [
           "sast:iac/open-ingress"
         ]
+      },
+      "query_filters": {
+        "cicd/github/unpinned_actions_full_length_commit_sha": {
+          "exclude_detail": "^actions/"
+        },
+        "dockerfile/last_user_is_root": {
+          "detail": "^the final stage explicitly runs as root"
+        },
+        "dockerfile/missing_user_instruction": {
+          "detail": "^the final stage has no USER instruction",
+          "exclude_detail": "the final base is scratch"
+        },
+        "k8s/non_kube_system_pod_with_host_mount": {
+          "detail": "^hostPath mounts ",
+          "exclude_detail": "\\(namespace kube-system\\)"
+        },
+        "k8s/psp_allows_sharing_host_ipc": {
+          "detail": "^hostIPC:"
+        },
+        "k8s/psp_allows_sharing_host_pid": {
+          "detail": "^hostPID:"
+        },
+        "k8s/psp_containers_share_host_network_namespace": {
+          "detail": "^hostNetwork:"
+        },
+        "k8s/workload_mounting_with_sensitive_os_directory": {
+          "detail": "^hostPath mounts /(?:(?:bin|sbin|boot|cdrom|dev|etc|home|lib|media|proc|root|run|seLinux|srv|usr|var|sys)| from the node)"
+        },
+        "terraform/aws/cloudfront_viewer_protocol_policy_allows_http": {
+          "detail": "^viewer_protocol_policy is allow-all"
+        },
+        "terraform/aws/cloudfront_without_minimum_protocol_tls_1.2": {
+          "detail": "minimum_protocol_version|minimum TLS version|TLSv1 security policy"
+        },
+        "terraform/aws/cloudtrail_log_files_s3_bucket_is_publicly_accessible": {
+          "detail": "^acl is public-|^an ACL grants access to the S3 AllUsers group|^an S3 policy allows any principal"
+        },
+        "terraform/aws/http_port_open": {
+          "port": 80
+        },
+        "terraform/aws/remote_desktop_port_open_to_internet": {
+          "port": 3389
+        },
+        "terraform/aws/s3_bucket_access_to_any_principal": {
+          "detail": "^an S3 policy allows any principal"
+        },
+        "terraform/aws/s3_bucket_acl_allows_read_or_write_to_all_users": {
+          "detail": "^acl is public-|^an ACL grants access to the S3 AllUsers group"
+        },
+        "terraform/aws/s3_bucket_acl_allows_read_to_any_authenticated_user": {
+          "detail": "^acl is authenticated-read|^an ACL grants access to the S3 AuthenticatedUsers group"
+        },
+        "terraform/aws/s3_bucket_allows_public_acl": {
+          "detail": "^block_public_acls ",
+          "subject": "#(?:aws_s3_bucket_public_access_block|module)\\."
+        },
+        "terraform/aws/s3_bucket_public_acl_overridden_by_public_access_block": {
+          "detail": "the public ACL conflicts with the bucket public access block"
+        },
+        "terraform/aws/s3_bucket_with_public_policy": {
+          "detail": "^block_public_policy ",
+          "subject": "#aws_s3_(?:account|bucket)_public_access_block\\.",
+          "exclude_detail": "account-level protection is enabled|bucket-level access blocks are declared"
+        },
+        "terraform/aws/s3_bucket_without_ignore_public_acl": {
+          "detail": "^ignore_public_acls ",
+          "subject": "#(?:aws_s3_bucket_public_access_block|module)\\."
+        },
+        "terraform/aws/s3_bucket_without_restriction_of_public_bucket": {
+          "detail": "^restrict_public_buckets ",
+          "subject": "#aws_s3_(?:account|bucket)_public_access_block\\.",
+          "exclude_detail": "account-level protection is enabled|bucket-level access blocks are declared|no account-level access block is declared"
+        },
+        "terraform/aws/security_group_with_unrestricted_access_to_ssh": {
+          "port": 22
+        },
+        "terraform/aws/sensitive_port_is_exposed_to_entire_network": {
+          "ports": "known"
+        },
+        "terraform/aws/sql_analysis_services_port_2383_is_publicly_accessible": {
+          "port": 2383
+        },
+        "terraform/aws/unknown_port_exposed_to_internet": {
+          "ports": "unknown"
+        },
+        "terraform/aws/unrestricted_security_group_ingress": {
+          "ports": "any"
+        },
+        "terraform/azure/rdp_is_exposed_to_the_internet": {
+          "detail": "^(?:RDP \\(3389\\) is|all ports are) open to any source over (?:TCP|any protocol)\\b"
+        },
+        "terraform/azure/ssh_is_exposed_to_the_internet": {
+          "detail": "^(?:SSH \\(22\\) is|all ports are) open to any source over (?:TCP|any protocol)\\b"
+        }
       }
     }
   ]

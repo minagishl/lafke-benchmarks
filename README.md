@@ -78,8 +78,10 @@ number of `sast:analysis-incomplete` findings, and of units where lafke did not 
   queries than lafke has `sast:iac/*` rules, so only the queries that `queries` in `corpora.json`
   maps to a lafke rule are scored; every other query is left out, and the scores say nothing
   about it. A positive file (listed in the query's `positive_expected_result.json`) is a hit when
-  a mapped rule reports a finding in it, and a negative file is a false positive when one does.
-  The reported line is not compared. Each case is copied into a directory of its own under
+  a mapped rule reports a finding in it that also satisfies any `query_filters` entry. The
+  same match in a negative file is a false positive. Filters can match the finding's detail,
+  resource subject or reported ingress ports. Known and unknown port checks use the port
+  catalog from the pinned KICS revision. The reported line is not compared. Each case is copied into a directory of its own under
   `.cache/` and named as lafke finds it (`Dockerfile`, `docker-compose.yml`,
   `.github/workflows/`), because KICS names them `positive1.dockerfile` and so on. A case that is
   a directory, or in another format (JSON, Bicep), is counted as excluded. The mapping is a
